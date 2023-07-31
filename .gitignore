@@ -9,3 +9,4 @@ dataset/*.ply
 */__pycache__
 checkpoints
 configs
+.idea/
