@@ -6,7 +6,7 @@ import coloredlogs
 import numpy as np
 
 
-class Params():
+class Params:
     """Class that loads hyperparameters from a json file.
 
     Example:
@@ -16,6 +16,7 @@ class Params():
     params.learning_rate = 0.5  # change the value of learning_rate in params
     ```
     """
+
     def __init__(self, json_path):
         with open(json_path) as f:
             params = json.load(f)
@@ -35,7 +36,7 @@ class Params():
         return self.__dict__
 
 
-class RunningAverage():
+class RunningAverage:
     """A simple class that maintains the running average of a quantity
     Example:
     ```
@@ -45,6 +46,7 @@ class RunningAverage():
     loss_avg() = 3
     ```
     """
+
     def __init__(self):
         self.steps = 0
         self.total = 0
@@ -57,7 +59,7 @@ class RunningAverage():
         return self.total / float(self.steps)
 
 
-class AverageMeter():
+class AverageMeter:
     def __init__(self):
         self.reset()
 

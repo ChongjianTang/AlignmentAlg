@@ -5,6 +5,7 @@ experiments/experiment_omnet/val*
 experiments/experiment_omnet/test*
 dataset/data
 dataset/data.zip
+dataset/*.ply
 */__pycache__
 checkpoints
 configs

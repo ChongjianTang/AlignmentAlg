@@ -2,10 +2,15 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 # ========================================================================================================
 
 
 class OMNetEncoder(nn.Module):
+    """
+    Feature Extraction 1
+    """
+
     def __init__(self):
         super().__init__()
         self.conv_block1 = nn.Sequential(nn.Conv1d(3, 64, 1), nn.BatchNorm1d(64), nn.ReLU(inplace=True))
@@ -36,6 +41,10 @@ class OMNetEncoder(nn.Module):
 
 
 class OMNetFusion(nn.Module):
+    """
+    Feature Extraction 2
+    """
+
     def __init__(self):
         super().__init__()
         self.conv_block1 = nn.Sequential(nn.Conv1d(2048 + 64, 1024, 1), nn.BatchNorm1d(1024), nn.ReLU(inplace=True))
@@ -62,27 +71,19 @@ class OMNetFusion(nn.Module):
 
 
 class OMNetDecoder(nn.Module):
+    """
+    Mask Prediction
+    """
+
     def __init__(self):
         super().__init__()
-        self.conv_block1 = nn.Sequential(
-            nn.Conv1d(512, 512, 1),
-            nn.BatchNorm1d(512),
-            nn.ReLU(inplace=True),
-        )
+        self.conv_block1 = nn.Sequential(nn.Conv1d(512, 512, 1), nn.BatchNorm1d(512), nn.ReLU(inplace=True))
 
-        self.conv_block2 = nn.Sequential(
-            nn.Conv1d(512, 256, 1),
-            nn.BatchNorm1d(256),
-            nn.ReLU(inplace=True),
-        )
+        self.conv_block2 = nn.Sequential(nn.Conv1d(512, 256, 1), nn.BatchNorm1d(256), nn.ReLU(inplace=True))
 
-        self.conv_block3 = nn.Sequential(
-            nn.Conv1d(256, 256, 1),
-            nn.BatchNorm1d(256),
-            nn.ReLU(inplace=True),
-        )
+        self.conv_block3 = nn.Sequential(nn.Conv1d(256, 256, 1), nn.BatchNorm1d(256), nn.ReLU(inplace=True))
 
-        self.conv_block4 = nn.Sequential(nn.Conv1d(256, 2, 1), )
+        self.conv_block4 = nn.Sequential(nn.Conv1d(256, 2, 1))
 
     def forward(self, x):
         point_feat512 = self.conv_block1(x)
@@ -95,33 +96,25 @@ class OMNetDecoder(nn.Module):
 
 
 class OMNetRegression(nn.Module):
+    """
+    Transformation Regression
+    """
+
     def __init__(self):
         super().__init__()
         self.fc_block1 = nn.Sequential(
             nn.Linear(3072, 2048),
             nn.BatchNorm1d(2048),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=True)
         )
 
-        self.fc_block2 = nn.Sequential(
-            nn.Linear(2048, 1024),
-            nn.BatchNorm1d(1024),
-            nn.ReLU(inplace=True),
-        )
+        self.fc_block2 = nn.Sequential(nn.Linear(2048, 1024), nn.BatchNorm1d(1024), nn.ReLU(inplace=True))
 
-        self.fc_block3 = nn.Sequential(
-            nn.Linear(1024, 512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(inplace=True),
-        )
+        self.fc_block3 = nn.Sequential(nn.Linear(1024, 512), nn.BatchNorm1d(512), nn.ReLU(inplace=True))
 
-        self.fc_block4 = nn.Sequential(
-            nn.Linear(512, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(inplace=True),
-        )
+        self.fc_block4 = nn.Sequential(nn.Linear(512, 256), nn.BatchNorm1d(256), nn.ReLU(inplace=True))
 
-        self.final_fc = nn.Sequential(nn.Linear(256, 7), )
+        self.final_fc = nn.Sequential(nn.Linear(256, 7))
 
     def forward(self, x):
         x = self.fc_block1(x)

@@ -1,8 +1,8 @@
 {
     "exp_name": "omnet",
     "model_dir": "experiments/experiment_omnet",
-    "dataset_type": "modelnet_os",
-    "transform_type": "modelnet_os_prnet_clean",
+    "dataset_type": "modelnet_ts",
+    "transform_type": "modelnet_ts_prnet_clean",
     "net_type": "omnet",
     "loss_type": "omnet",
     "eval_type": [
@@ -12,9 +12,9 @@
     "major_metric": "score",
     "titer": 4,
     "loss_alpha1": 1,
-    "loss_alpha2": 4,
-    "gamma": 1,
-    "rot_mag": 45,
+    "loss_alpha2": 1,
+    "gamma": 0.98,
+    "rot_mag": 90,
     "trans_mag": 0.5,
     "noise_std": 0.01,
     "save_summary_steps": 100,
@@ -28,5 +28,5 @@
     "num_points": 1024,
     "overlap_dist": 0.1,
     "num_epochs": 10000,
-    "learning_rate": 0.0001
+    "learning_rate": 0.01
 }

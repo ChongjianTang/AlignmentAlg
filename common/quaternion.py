@@ -161,7 +161,7 @@ def torch_transform_pose(pose_old, pose_new):
     pose = torch.cat((quat, translate), dim=1)
 
     return pose
-
+ 
 
 def torch_qinv(q):
     # expectes q in (w,x,y,z) format

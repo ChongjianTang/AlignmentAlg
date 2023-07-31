@@ -74,6 +74,9 @@ def train(model, manager: Manager):
             t.update()
 
     manager.scheduler.step()
+
+    if manager.optimizer.param_groups[0]['lr'] < 0.0001:
+        manager.optimizer.param_groups[0]['lr'] = 0.0001
     # update epoch: epoch += 1
     manager.update_epoch()
 
@@ -157,6 +160,8 @@ def train_and_evaluate(model, manager: Manager):
     # reload weights from restore_file if specified
     if args.restore_file is not None:
         manager.load_checkpoints()
+        manager.optimizer.param_groups[0]['lr'] = 0.0001
+        manager.scheduler.gamma = params.gamma
 
     for epoch in range(manager.epoch, manager.params.num_epochs):
         # compute number of batches in one epoch (one full pass over the training set)
@@ -166,7 +171,7 @@ def train_and_evaluate(model, manager: Manager):
         evaluate(model, manager)
 
         # Check if current is best, save checkpoints if best, meanwhile, save latest checkpoints
-        manager.check_best_save_last_checkpoints(save_latest_freq=100, save_best_after=1000)
+        manager.check_best_save_last_checkpoints(save_latest_freq=10, save_best_after=1000)
 
 
 if __name__ == "__main__":
@@ -193,9 +198,9 @@ if __name__ == "__main__":
             torch.cuda.set_device(0)
         gpu_ids = ", ".join(str(i) for i in [j for j in range(num_gpu)])
         logger.info("Using GPU ids: [{}]".format(gpu_ids))
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
-        torch.backends.cudnn.enabled = False
+        # torch.backends.cudnn.deterministic = True
+        # torch.backends.cudnn.benchmark = False
+        # torch.backends.cudnn.enabled = False
 
     # fetch dataloaders
     dataloaders = data_loader.fetch_dataloader(params)

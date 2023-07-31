@@ -11,9 +11,37 @@ from common import utils
 from common.manager import Manager
 from loss.loss import compute_loss, compute_metrics
 
+import matplotlib.pyplot as plt
+
+import numpy as np
+
+import open3d as o3d
+
 parser = argparse.ArgumentParser()
-parser.add_argument("--model_dir", type=str, default="./experiments/experiment_omnet", help="Directory containing params.json")
+parser.add_argument("--model_dir", type=str, default="./experiments/experiment_omnet",
+                    help="Directory containing params.json")
 parser.add_argument("--restore_file", type=str, help="name of the file in --model_dir containing weights to load")
+
+
+
+
+def plot_3d_points(set1, set2):
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.add_subplot(111, projection='3d')
+
+    color_set1 = 'r'
+    color_set2 = 'b'
+    # color_set3 = 'g'
+
+    ax.scatter(set1[:, 0], set1[:, 1], set1[:, 2], c=color_set1, marker='o')
+    ax.scatter(set2[:, 0], set2[:, 1], set2[:, 2], c=color_set2, marker='^')
+    # ax.scatter(set3[:, 0], set3[:, 1], set3[:, 2], c=color_set3, marker='x')
+
+    ax.set_xlabel('X Label')
+    ax.set_ylabel('Y Label')
+    ax.set_zlabel('Z Label')
+
+    plt.show()
 
 
 def test(model, manager):
@@ -24,12 +52,45 @@ def test(model, manager):
     with torch.no_grad():
         # compute metrics over the dataset
         if manager.dataloaders["val"] is not None:
+
             # inference time
             total_time = 0.
             all_endpoints = defaultdict(list)
             # loss status and val status initial
             manager.reset_loss_status()
             manager.reset_metric_status("val")
+
+            # Visualization
+            pcd = o3d.io.read_point_cloud("dataset/lander.ply")
+            points_src = np.asarray(pcd.points).astype(np.float32)
+
+            pcd = o3d.io.read_point_cloud("dataset/seg_target_object1.ply")
+            points_ref = np.asarray(pcd.points).astype(np.float32)
+
+            N = points_ref.shape[0]
+            indices = np.random.choice(N, size=points_src.shape[0], replace=False)
+
+            points_ref = points_ref[indices, :]
+
+            plot_3d_points(points_ref, points_src)
+
+            points_src, points_ref, _ = model.module.my_eval(points_src, points_ref)
+
+            plot_3d_points(points_ref, points_src)
+
+
+
+
+            for data in manager.dataloaders["test"]:
+                for i in range(5):
+                    points_src = data["points_src"].cpu().numpy()[i]
+                    points_ref = data["points_ref"].cpu().numpy()[i]
+                    plot_3d_points(points_ref, points_src)
+
+                    points_src, points_ref, _ = model.module.my_eval(points_src, points_ref)
+
+                    plot_3d_points(points_ref, points_src)
+
             for batch_idx, data_batch in enumerate(manager.dataloaders["val"]):
                 # move to GPU if available
                 data_batch = utils.tensor_gpu(data_batch)
@@ -105,9 +166,9 @@ if __name__ == '__main__':
             torch.cuda.set_device(0)
         gpu_ids = ", ".join(str(i) for i in [j for j in range(num_gpu)])
         logger.info("Using GPU ids: [{}]".format(gpu_ids))
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
-        torch.backends.cudnn.enabled = False
+        # torch.backends.cudnn.deterministic = True
+        # torch.backends.cudnn.benchmark = False
+        # torch.backends.cudnn.enabled = False
 
     # Fetch dataloaders
     dataloaders = data_loader.fetch_dataloader(params)
@@ -120,7 +181,8 @@ if __name__ == '__main__':
         model = net.fetch_net(params)
 
     # Initial status for checkpoint manager
-    manager = Manager(model=model, optimizer=None, scheduler=None, params=params, dataloaders=dataloaders, logger=logger)
+    manager = Manager(model=model, optimizer=None, scheduler=None, params=params, dataloaders=dataloaders,
+                      logger=logger)
 
     # Reload weights from the saved file
     manager.load_checkpoints()

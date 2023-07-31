@@ -23,7 +23,8 @@ def worker_init_fn(worker_id):
 
 class ModelNetNpy(Dataset):
     def __init__(self, dataset_path: str, dataset_mode: str, subset: str = "train", categories=None, transform=None):
-        """ModelNet40 TS data.
+        """
+        ModelNet40 TS data.
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self._root = dataset_path
@@ -134,7 +135,7 @@ def fetch_dataloader(params):
                           worker_init_fn=worker_init_fn)
     dataloaders["train"] = train_dl
 
-    # chosse val or test data loader for evaluate
+    # choose val or test data loader for evaluate
     for split in ["val", "test"]:
         if split in params.eval_type:
             if split == "val":

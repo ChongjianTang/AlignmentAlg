@@ -4,7 +4,15 @@ import torch.nn as nn
 from common import se3, so3
 from common.utils import tensor_gpu
 
+class QuaternionLoss(nn.Module):
+    def __init__(self):
+        super(QuaternionLoss, self).__init__()
 
+    def forward(self, pred, target):
+        loss_pos = 1 - torch.pow(torch.sum(pred * target, dim=-1), 2)
+        # loss_neg = 1 - torch.pow(torch.sum(pred * -target, dim=-1), 2)
+        # loss = torch.where(loss_pos < loss_neg, loss_pos, loss_neg)
+        return loss_pos.mean()
 class LossL1(nn.Module):
     def __init__(self):
         super(LossL1, self).__init__()
@@ -37,6 +45,7 @@ def compute_loss(endpoints, params):
 
     l1_criterion = LossL1()
     l2_criterion = LossL2()
+    quat_loss = QuaternionLoss()
     cls_criterion = LossCrossEntropy(weight=torch.tensor([0.7, 0.3]).cuda())
     num_iter = len(endpoints["all_pose_pair"])
     if params.loss_type == "omnet":
@@ -48,7 +57,7 @@ def compute_loss(endpoints, params):
             loss['cls_{}'.format(i)] = (src_cls + ref_cls) / 2.0
             # reg loss
             pose_pair = endpoints["all_pose_pair"][i]
-            loss["quat_{}".format(i)] = l1_criterion(pose_pair[0][:, :4], pose_pair[1][:, :4]) * params.loss_alpha1
+            loss["quat_{}".format(i)] = quat_loss(pose_pair[0][:, :4], pose_pair[1][:, :4]) * params.loss_alpha1
             loss["translate_{}".format(i)] = l2_criterion(pose_pair[0][:, 4:], pose_pair[1][:, 4:]) * params.loss_alpha2
             # total loss
         total_loss = []

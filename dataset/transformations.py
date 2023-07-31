@@ -40,6 +40,7 @@ def uniform_2_sphere(num: int = None):
 
 class SplitSourceRef:
     """Clones the point cloud into separate source and reference point clouds"""
+
     def __init__(self, mode="hdf"):
         self.mode = mode
 
@@ -79,7 +80,9 @@ class SplitSourceRef:
                 sample["points_ref"] = points_ref
             else:
                 if points_src.shape[0] > sample["num_points"]:
-                    sample["points_src"] = points_src[np.random.choice(points_src.shape[0], sample["num_points"], replace=False), :]
+                    sample["points_src"] = points_src[
+                                           np.random.choice(points_src.shape[0], sample["num_points"], replace=False),
+                                           :]
                 else:
                     rand_idxs = np.concatenate([
                         np.random.choice(points_src.shape[0], points_src.shape[0], replace=False),
@@ -88,7 +91,9 @@ class SplitSourceRef:
                     sample["points_src"] = points_src[rand_idxs, :]
 
                 if points_ref.shape[0] > sample["num_points"]:
-                    sample["points_ref"] = points_ref[np.random.choice(points_ref.shape[0], sample["num_points"], replace=False), :]
+                    sample["points_ref"] = points_ref[
+                                           np.random.choice(points_ref.shape[0], sample["num_points"], replace=False),
+                                           :]
                 else:
                     rand_idxs = np.concatenate([
                         np.random.choice(points_ref.shape[0], points_ref.shape[0], replace=False),
@@ -103,10 +108,12 @@ class SplitSourceRef:
             points_ref = torch.from_numpy(points_ref).unsqueeze(0).cuda()
             points_src_flipped = points_src.transpose(1, 2).contiguous().detach()
             points_src_fps = gather_operation(points_src_flipped, furthest_point_sample(points_src,
-                                                                                        4096)).transpose(1, 2).contiguous().detach()
+                                                                                        4096)).transpose(1,
+                                                                                                         2).contiguous().detach()
             points_ref_flipped = points_ref.transpose(1, 2).contiguous().detach()
             points_ref_fps = gather_operation(points_ref_flipped, furthest_point_sample(points_ref,
-                                                                                        4096)).transpose(1, 2).contiguous().detach()
+                                                                                        4096)).transpose(1,
+                                                                                                         2).contiguous().detach()
             sample["points_src"] = points_src_fps.squeeze(0).cpu().numpy()
             sample["points_ref"] = points_ref_fps.squeeze(0).cpu().numpy()
             sample["points_src_raw"] = sample["points_src"].copy().astype(np.float32)
@@ -191,13 +198,15 @@ class Resampler:
 
 class RandomJitter:
     """ generate perturbations """
+
     def __init__(self, noise_std=0.01, clip=0.05):
         self.noise_std = noise_std
         self.clip = clip
 
     def jitter(self, pts):
 
-        noise = np.clip(np.random.normal(0.0, scale=self.noise_std, size=(pts.shape[0], 3)), a_min=-self.clip, a_max=self.clip)
+        noise = np.clip(np.random.normal(0.0, scale=self.noise_std, size=(pts.shape[0], 3)), a_min=-self.clip,
+                        a_max=self.clip)
         pts[:, :3] += noise  # Add noise to xyz
 
         return pts
@@ -220,6 +229,7 @@ class RandomCrop:
     half-space oriented in this direction.
     If p_keep != 0.5, we shift the plane until approximately p_keep points are retained
     """
+
     def __init__(self, p_keep=None):
         if p_keep is None:
             p_keep = [0.7, 0.7]  # Crop both clouds to 70%
@@ -228,7 +238,7 @@ class RandomCrop:
     @staticmethod
     def crop(points, p_keep):
         if p_keep == 1.0:
-            mask = np.ones(shape=(points.shape[0], )) > 0
+            mask = np.ones(shape=(points.shape[0],)) > 0
 
         else:
             rand_xyz = uniform_2_sphere()
@@ -339,6 +349,7 @@ class RandomTransformSE3_euler(RandomTransformSE3):
     generate uniform rotations
 
     """
+
     def generate_transform(self):
 
         if self._random_mag:
@@ -348,9 +359,9 @@ class RandomTransformSE3_euler(RandomTransformSE3):
             rot_mag, trans_mag = self._rot_mag, self._trans_mag
 
         # Generate rotation
-        anglex = np.random.uniform() * np.pi * rot_mag / 180.0
-        angley = np.random.uniform() * np.pi * rot_mag / 180.0
-        anglez = np.random.uniform() * np.pi * rot_mag / 180.0
+        anglex = np.random.uniform(-1, 1) * np.pi * rot_mag / 180.0
+        angley = np.random.uniform(-1, 1) * np.pi * rot_mag / 180.0
+        anglez = np.random.uniform(-1, 1) * np.pi * rot_mag / 180.0
 
         cosx = np.cos(anglex)
         cosy = np.cos(angley)
@@ -370,6 +381,7 @@ class RandomTransformSE3_euler(RandomTransformSE3):
 
 class ShufflePoints:
     """Shuffles the order of the points"""
+
     def __call__(self, sample):
         if "points" in sample:
             sample["points"] = np.random.permutation(sample["points"])
@@ -383,13 +395,15 @@ class ShufflePoints:
 class SetDeterministic:
     """Adds a deterministic flag to the sample such that subsequent transforms
     use a fixed random seed where applicable. Used for test"""
+
     def __call__(self, sample):
         sample["deterministic"] = True
         return sample
 
 
 class PRNetTorch:
-    def __init__(self, num_points, rot_mag, trans_mag, noise_std=0.01, clip=0.05, add_noise=True, only_z=False, partial=True):
+    def __init__(self, num_points, rot_mag, trans_mag, noise_std=0.01, clip=0.05, add_noise=True, only_z=False,
+                 partial=True):
         self.num_points = num_points
         self.rot_mag = rot_mag
         self.trans_mag = trans_mag
@@ -411,7 +425,8 @@ class PRNetTorch:
 
     def jitter(self, pts):
 
-        noise = np.clip(np.random.normal(0.0, scale=self.noise_std, size=(pts.shape[0], 3)), a_min=-self.clip, a_max=self.clip)
+        noise = np.clip(np.random.normal(0.0, scale=self.noise_std, size=(pts.shape[0], 3)), a_min=-self.clip,
+                        a_max=self.clip)
         noise = torch.from_numpy(noise).to(pts.device)
         pts[:, :3] += noise  # Add noise to xyz
 
@@ -419,7 +434,7 @@ class PRNetTorch:
 
     def knn(self, pts, random_pt, k):
         random_pt = torch.from_numpy(random_pt).to(pts.device)
-        distance = torch.sum((pts - random_pt)**2, dim=1)
+        distance = torch.sum((pts - random_pt) ** 2, dim=1)
         idx = distance.topk(k=k, dim=0, largest=False)[1]  # (batch_size, num_points, k)
         return idx
 
@@ -431,9 +446,9 @@ class PRNetTorch:
         src = sample["points_src"]
         ref = sample["points_ref"]
         # Generate rigid transform
-        anglex = np.random.uniform() * np.pi * self.rot_mag / 180.0
-        angley = np.random.uniform() * np.pi * self.rot_mag / 180.0
-        anglez = np.random.uniform() * np.pi * self.rot_mag / 180.0
+        anglex = np.random.uniform(-1, 1) * np.pi * self.rot_mag / 180.0
+        angley = np.random.uniform(-1, 1) * np.pi * self.rot_mag / 180.0
+        anglez = np.random.uniform(-1, 1) * np.pi * self.rot_mag / 180.0
 
         cosx = np.cos(anglex)
         cosy = np.cos(angley)
@@ -531,7 +546,8 @@ class PRNetTorchOverlapRatio:
 
     def jitter(self, pts):
 
-        noise = np.clip(np.random.normal(0.0, scale=self.noise_std, size=(pts.shape[0], 3)), a_min=-self.clip, a_max=self.clip)
+        noise = np.clip(np.random.normal(0.0, scale=self.noise_std, size=(pts.shape[0], 3)), a_min=-self.clip,
+                        a_max=self.clip)
         noise = torch.from_numpy(noise).to(pts.device)
         pts[:, :3] += noise  # Add noise to xyz
 
@@ -539,7 +555,7 @@ class PRNetTorchOverlapRatio:
 
     def knn(self, pts, random_pt, k1, k2):
         random_pt = torch.from_numpy(random_pt).to(pts.device)
-        distance = torch.sum((pts - random_pt)**2, dim=1)
+        distance = torch.sum((pts - random_pt) ** 2, dim=1)
         idx1 = distance.topk(k=k1, dim=0, largest=False)[1]  # (batch_size, num_points, k)
         idx2 = distance.topk(k=k2, dim=0, largest=True)[1]
         return idx1, idx2
@@ -565,10 +581,10 @@ class PRNetTorchOverlapRatio:
         k2_idx = ref_idx1[0]
         k2 = ref[k2_idx, :]
 
-        distance = torch.sum((ref[ref_idx1, :] - k1)**2, dim=1)
+        distance = torch.sum((ref[ref_idx1, :] - k1) ** 2, dim=1)
         overlap_idx = distance.topk(k=int(768 * self.overlap_ratio), dim=0, largest=False)[1]
         k1_points = ref[ref_idx1, :][overlap_idx, :]
-        distance = torch.sum((ref[ref_idx2, :] - k2)**2, dim=1)
+        distance = torch.sum((ref[ref_idx2, :] - k2) ** 2, dim=1)
         nonoverlap_idx = distance.topk(k=768 - int(768 * self.overlap_ratio), dim=0, largest=False)[1]
         k2_points = ref[ref_idx2, :][nonoverlap_idx, :]
         ref = torch.cat((k1_points, k2_points), dim=0)
@@ -576,9 +592,9 @@ class PRNetTorchOverlapRatio:
         # pdb.set_trace()
 
         # Generate rigid transform
-        anglex = np.random.uniform() * np.pi * self.rot_mag / 180.0
-        angley = np.random.uniform() * np.pi * self.rot_mag / 180.0
-        anglez = np.random.uniform() * np.pi * self.rot_mag / 180.0
+        anglex = np.random.uniform(-1, 1) * np.pi * self.rot_mag / 180.0
+        angley = np.random.uniform(-1, 1) * np.pi * self.rot_mag / 180.0
+        anglez = np.random.uniform(-1, 1) * np.pi * self.rot_mag / 180.0
 
         cosx = np.cos(anglex)
         cosy = np.cos(angley)
@@ -615,7 +631,6 @@ class PRNetTorchOverlapRatio:
 
 
 def fetch_transform(params):
-
     if params.transform_type == "modelnet_os_rpmnet_noise":
         train_transforms = [
             SplitSourceRef(mode="hdf"),
@@ -722,14 +737,16 @@ def fetch_transform(params):
         train_transforms = [
             SplitSourceRef(mode="donothing"),
             ShufflePoints(),
-            PRNetTorch(num_points=params.num_points, rot_mag=params.rot_mag, trans_mag=params.trans_mag, add_noise=False)
+            PRNetTorch(num_points=params.num_points, rot_mag=params.rot_mag, trans_mag=params.trans_mag,
+                       add_noise=False)
         ]
 
         test_transforms = [
             SetDeterministic(),
             SplitSourceRef(mode="donothing"),
             ShufflePoints(),
-            PRNetTorch(num_points=params.num_points, rot_mag=params.rot_mag, trans_mag=params.trans_mag, add_noise=False)
+            PRNetTorch(num_points=params.num_points, rot_mag=params.rot_mag, trans_mag=params.trans_mag,
+                       add_noise=False)
         ]
 
     elif params.transform_type == "modelnet_os_prnet_noise":
@@ -750,14 +767,16 @@ def fetch_transform(params):
         train_transforms = [
             SplitSourceRef(mode="hdf"),
             ShufflePoints(),
-            PRNetTorch(num_points=params.num_points, rot_mag=params.rot_mag, trans_mag=params.trans_mag, add_noise=False)
+            PRNetTorch(num_points=params.num_points, rot_mag=params.rot_mag, trans_mag=params.trans_mag,
+                       add_noise=False)
         ]
 
         test_transforms = [
-            SetDeterministic(),
+            # SetDeterministic(),
             SplitSourceRef(mode="hdf"),
             ShufflePoints(),
-            PRNetTorch(num_points=params.num_points, rot_mag=params.rot_mag, trans_mag=params.trans_mag, add_noise=False)
+            PRNetTorch(num_points=params.num_points, rot_mag=params.rot_mag, trans_mag=params.trans_mag,
+                       add_noise=False)
         ]
 
     elif params.transform_type == "modelnet_os_prnet_clean_onlyz":
