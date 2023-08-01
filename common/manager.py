@@ -110,7 +110,7 @@ class Manager():
 
     def print_train_info(self):
         exp_name = self.params.model_dir.split('/')[-1]
-        print_str = "{} Epoch: {:4d}, lr={:.4f} ".format(exp_name, self.epoch, self.scheduler.get_last_lr()[0])
+        print_str = "{} Epoch: {:5d}, lr={:.5f} ".format(exp_name, self.epoch, self.scheduler.get_last_lr()[0])
         print_str += "total loss: %.4f(%.4f)" % (self.loss_status['total'].val, self.loss_status['total'].avg)
         return print_str
 

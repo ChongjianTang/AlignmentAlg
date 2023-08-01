@@ -17,7 +17,8 @@ parser.add_argument("--model_dir", default="experiments/base_model", help="Direc
 parser.add_argument("--restore_file",
                     default=None,
                     help="Optional, name of the file in --model_dir containing weights to reload before training")
-parser.add_argument("-ow", "--only_weights", action="store_true", help="Only use weights to load or load all train status.")
+parser.add_argument("-ow", "--only_weights", action="store_true",
+                    help="Only use weights to load or load all train status.")
 
 
 def train(model, manager: Manager):
@@ -48,6 +49,11 @@ def train(model, manager: Manager):
 
             # compute model output and loss
             output_batch = model(data_batch)
+
+            # # print(output_batch["all_pose_pair"][:][1])
+            # for i in range(len(output_batch["all_pose_pair"])):
+            #     output_batch["all_pose_pair"][i][1] = output_batch["all_pose_pair"][i][0]
+
             losses = compute_loss(output_batch, manager.params)
 
             # real batch size
@@ -75,8 +81,8 @@ def train(model, manager: Manager):
 
     manager.scheduler.step()
 
-    if manager.optimizer.param_groups[0]['lr'] < 0.0001:
-        manager.optimizer.param_groups[0]['lr'] = 0.0001
+    if manager.optimizer.param_groups[0]['lr'] < 0.00001:
+        manager.optimizer.param_groups[0]['lr'] = 0.00001
     # update epoch: epoch += 1
     manager.update_epoch()
 
@@ -160,8 +166,9 @@ def train_and_evaluate(model, manager: Manager):
     # reload weights from restore_file if specified
     if args.restore_file is not None:
         manager.load_checkpoints()
-        manager.optimizer.param_groups[0]['lr'] = 0.0001
+        manager.optimizer.param_groups[0]['lr'] = 0.001
         manager.scheduler.gamma = params.gamma
+        # manager.epoch = 0
 
     for epoch in range(manager.epoch, manager.params.num_epochs):
         # compute number of batches in one epoch (one full pass over the training set)
@@ -216,7 +223,8 @@ if __name__ == "__main__":
     scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=params.gamma)
 
     # initial status for checkpoint manager
-    manager = Manager(model=model, optimizer=optimizer, scheduler=scheduler, params=params, dataloaders=dataloaders, logger=logger)
+    manager = Manager(model=model, optimizer=optimizer, scheduler=scheduler, params=params, dataloaders=dataloaders,
+                      logger=logger)
 
     # Train the model
     logger.info("Starting training for {} epoch(s)".format(params.num_epochs))

@@ -76,7 +76,6 @@ class OMNet(nn.Module):
         src_pred_mask = torch.ones(size=(B, src_N), dtype=xyz_src.dtype).cuda()
         ref_pred_mask = torch.ones(size=(B, ref_N), dtype=xyz_ref.dtype).cuda()
 
-
         # rename xyz_src
         xyz_src_iter = xyz_src.clone()
 
@@ -116,7 +115,8 @@ class OMNet(nn.Module):
             src_pred_mask = torch.argmax(src_cls_pred, dim=1)
             ref_pred_mask = torch.argmax(ref_cls_pred, dim=1)
 
-        return xyz_src_iter.squeeze(0).cpu().numpy(), xyz_ref.squeeze(0).cpu().numpy(), transform_pred
+        return xyz_src_iter.squeeze(0).cpu().numpy(), xyz_ref.squeeze(
+            0).cpu().numpy(), src_pred_mask, ref_pred_mask, transform_pred
 
     def forward(self, data):
         endpoints = {}
@@ -132,7 +132,6 @@ class OMNet(nn.Module):
         # xyz_src_prime = quaternion.torch_quat_transform(pose_gt, xyz_src.detach())
         #
         # plot_3d_points(xyz_src_prime[0].cpu(), xyz_ref[0].cpu())
-
 
         # init endpoints
         all_src_cls_pair = []
@@ -150,9 +149,9 @@ class OMNet(nn.Module):
         transform_pred = quaternion.torch_quat2mat(pose_pred)
         src_pred_mask = torch.ones(size=(B, src_N), dtype=xyz_src.dtype).cuda()
         ref_pred_mask = torch.ones(size=(B, ref_N), dtype=xyz_ref.dtype).cuda()
-        overlap_src_mask, overlap_ref_mask = self.generate_overlap_mask(xyz_src.clone(), xyz_ref.clone(), src_pred_mask,
-                                                                        ref_pred_mask,
-                                                                        transform_gt)
+        # overlap_src_mask, overlap_ref_mask = self.generate_overlap_mask(xyz_src.clone(), xyz_ref.clone(), src_pred_mask,
+        #                                                                 ref_pred_mask,
+        #                                                                 transform_gt)
 
         # rename xyz_src
         xyz_src_iter = xyz_src.clone()

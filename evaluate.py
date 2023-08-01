@@ -23,8 +23,6 @@ parser.add_argument("--model_dir", type=str, default="./experiments/experiment_o
 parser.add_argument("--restore_file", type=str, help="name of the file in --model_dir containing weights to load")
 
 
-
-
 def plot_3d_points(set1, set2):
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot(111, projection='3d')
@@ -60,26 +58,47 @@ def test(model, manager):
             manager.reset_loss_status()
             manager.reset_metric_status("val")
 
-            # Visualization
-            pcd = o3d.io.read_point_cloud("dataset/lander.ply")
-            points_src = np.asarray(pcd.points).astype(np.float32)
-
-            pcd = o3d.io.read_point_cloud("dataset/seg_target_object1.ply")
-            points_ref = np.asarray(pcd.points).astype(np.float32)
-
-            N = points_ref.shape[0]
-            indices = np.random.choice(N, size=points_src.shape[0], replace=False)
-
-            points_ref = points_ref[indices, :]
-
-            plot_3d_points(points_ref, points_src)
-
-            points_src, points_ref, _ = model.module.my_eval(points_src, points_ref)
-
-            plot_3d_points(points_ref, points_src)
-
-
-
+            # # Visualization
+            # pcd = o3d.io.read_point_cloud("dataset/lander.ply")
+            # points_src = np.asarray(pcd.points).astype(np.float32)
+            # points_src = points_src - np.mean(points_src, axis=0)
+            #
+            # pcd = o3d.io.read_point_cloud("dataset/seg_target_object1.ply")
+            # points_ref = np.asarray(pcd.points)
+            # points_ref = points_ref - np.mean(points_ref, axis=0)
+            #
+            # theta = np.radians(78)
+            #
+            # R = np.array([
+            #     [np.cos(theta), -np.sin(theta), 0],
+            #     [np.sin(theta), np.cos(theta), 0],
+            #     [0, 0, 1]
+            # ])
+            #
+            # points_ref = np.dot(points_ref, R.T).astype(np.float32)
+            #
+            # # find the global max and min values
+            # max_value_global = np.max([np.abs(points_src.min()), np.abs(points_src.max()),
+            #                            np.abs(points_ref.min()), np.abs(points_ref.max())])
+            #
+            # # Scale the points using the global maximum value
+            # points_src = points_src / max_value_global
+            # points_ref = points_ref / max_value_global
+            #
+            # # Ensure that the points are within the range of -1 and 1
+            # points_src = 2 * (points_src - points_src.min()) / (points_src.max() - points_src.min()) - 1
+            # points_ref = 2 * (points_ref - points_ref.min()) / (points_ref.max() - points_ref.min()) - 1
+            #
+            # N = points_ref.shape[0]
+            # indices = np.random.choice(N, size=points_src.shape[0], replace=False)
+            #
+            # points_ref = points_ref[indices, :]
+            #
+            # plot_3d_points(points_ref, points_src)
+            #
+            # points_src, points_ref, src_pred_mask, ref_pred_mask, _ = model.module.my_eval(points_src, points_ref)
+            #
+            # plot_3d_points(points_ref, points_src)
 
             for data in manager.dataloaders["test"]:
                 for i in range(5):
@@ -87,7 +106,8 @@ def test(model, manager):
                     points_ref = data["points_ref"].cpu().numpy()[i]
                     plot_3d_points(points_ref, points_src)
 
-                    points_src, points_ref, _ = model.module.my_eval(points_src, points_ref)
+                    points_src, points_ref, src_pred_mask, ref_pred_mask, _ = model.module.my_eval(points_src,
+                                                                                                   points_ref)
 
                     plot_3d_points(points_ref, points_src)
 

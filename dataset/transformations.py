@@ -402,9 +402,11 @@ class SetDeterministic:
 
 
 class PRNetTorch:
-    def __init__(self, num_points, rot_mag, trans_mag, noise_std=0.01, clip=0.05, add_noise=True, only_z=False,
+    def __init__(self, num_points, angle_range, rot_mag, trans_mag, noise_std=0.01, clip=0.05, add_noise=True,
+                 only_z=False,
                  partial=True):
         self.num_points = num_points
+        self.angle_range = angle_range
         self.rot_mag = rot_mag
         self.trans_mag = trans_mag
         self.noise_std = noise_std
@@ -445,6 +447,52 @@ class PRNetTorch:
 
         src = sample["points_src"]
         ref = sample["points_ref"]
+
+        # Crop and sample
+        if self.partial:
+            src = torch.from_numpy(src)
+            ref = torch.from_numpy(ref)
+
+            # Radius
+            r = 500
+
+            # Randomly select an azimuthal angle and a polar angle
+            theta1 = 2 * np.pi * np.random.rand()
+            phi1 = np.pi * np.random.rand()
+
+            # Calculate the Cartesian coordinates
+            x = r * np.sin(phi1) * np.cos(theta1)
+            y = r * np.sin(phi1) * np.sin(theta1)
+            z = r * np.cos(phi1)
+
+            random_p1 = np.array([x, y, z])
+
+            # random_p1 = np.random.random(size=(1, 3)) + np.array([[500, 500, 500]]) * np.random.choice([1, -1, 1, -1])
+            idx1 = self.knn(src, random_p1, k=768)
+            # np.random.random(size=(1, 3)) + np.array([[500, 500, 500]]) * np.random.choice([1, -1, 2, -2])
+
+            angle_range = self.angle_range * np.pi / 180.0
+
+            delta_theta = np.random.uniform(-angle_range, angle_range)
+            delta_phi = np.random.uniform(-angle_range, angle_range)
+
+            theta2 = theta1 + delta_theta
+            phi2 = phi1 + delta_phi
+
+            x2 = r * np.sin(phi2) * np.cos(theta2)
+            y2 = r * np.sin(phi2) * np.sin(theta2)
+            z2 = r * np.cos(phi2)
+
+            random_p2 = np.array([x2, y2, z2])
+            idx2 = self.knn(ref, random_p2, k=768)
+        else:
+            idx1 = np.random.choice(src.shape[0], 1024, replace=False),
+            idx2 = np.random.choice(ref.shape[0], 1024, replace=False),
+            # src = np.squeeze(src, axis=-1)
+            # ref = np.squeeze(ref, axis=-1)
+        src = src[idx1, :]
+        ref = ref[idx2, :]
+
         # Generate rigid transform
         anglex = np.random.uniform(-1, 1) * np.pi * self.rot_mag / 180.0
         angley = np.random.uniform(-1, 1) * np.pi * self.rot_mag / 180.0
@@ -472,30 +520,13 @@ class PRNetTorch:
         sample["transform_gt"] = transform_s_r
         sample["pose_gt"] = se3.np_mat2quat(transform_s_r)
 
-        # Crop and sample
-        if self.partial:
-            src = torch.from_numpy(src)
-            ref = torch.from_numpy(ref)
-            random_p1 = np.random.random(size=(1, 3)) + np.array([[500, 500, 500]]) * np.random.choice([1, -1, 1, -1])
-            idx1 = self.knn(src, random_p1, k=768)
-            # np.random.random(size=(1, 3)) + np.array([[500, 500, 500]]) * np.random.choice([1, -1, 2, -2])
-            random_p2 = random_p1
-            idx2 = self.knn(ref, random_p2, k=768)
-        else:
-            idx1 = np.random.choice(src.shape[0], 1024, replace=False),
-            idx2 = np.random.choice(ref.shape[0], 1024, replace=False),
-            # src = np.squeeze(src, axis=-1)
-            # ref = np.squeeze(ref, axis=-1)
-            src = torch.from_numpy(src)
-            ref = torch.from_numpy(ref)
-
         # add noise
         if self.add_noise:
-            sample["points_src"] = self.jitter(src[idx1, :])
-            sample["points_ref"] = self.jitter(ref[idx2, :])
+            sample["points_src"] = self.jitter(src)
+            sample["points_ref"] = self.jitter(ref)
         else:
-            sample["points_src"] = src[idx1, :]
-            sample["points_ref"] = ref[idx2, :]
+            sample["points_src"] = src
+            sample["points_ref"] = ref
         if sample["points_src"].size()[0] == 1:
             sample["points_src"] = sample["points_src"].squeeze(0)
             sample["points_ref"] = sample["points_ref"].squeeze(0)
@@ -716,6 +747,7 @@ def fetch_transform(params):
             SplitSourceRef(mode="donothing"),
             ShufflePoints(),
             PRNetTorch(num_points=params.num_points,
+                       angle_range=params.angle_range,
                        rot_mag=params.rot_mag,
                        trans_mag=params.trans_mag,
                        noise_std=params.noise_std,
@@ -727,6 +759,7 @@ def fetch_transform(params):
             SplitSourceRef(mode="donothing"),
             ShufflePoints(),
             PRNetTorch(num_points=params.num_points,
+                       angle_range=params.angle_range,
                        rot_mag=params.rot_mag,
                        trans_mag=params.trans_mag,
                        noise_std=params.noise_std,
@@ -737,15 +770,17 @@ def fetch_transform(params):
         train_transforms = [
             SplitSourceRef(mode="donothing"),
             ShufflePoints(),
-            PRNetTorch(num_points=params.num_points, rot_mag=params.rot_mag, trans_mag=params.trans_mag,
+            PRNetTorch(num_points=params.num_points, angle_range=params.angle_range,
+                       rot_mag=params.rot_mag, trans_mag=params.trans_mag,
                        add_noise=False)
         ]
 
         test_transforms = [
-            SetDeterministic(),
+            # SetDeterministic(),
             SplitSourceRef(mode="donothing"),
             ShufflePoints(),
-            PRNetTorch(num_points=params.num_points, rot_mag=params.rot_mag, trans_mag=params.trans_mag,
+            PRNetTorch(num_points=params.num_points, angle_range=params.angle_range,
+                       rot_mag=params.rot_mag, trans_mag=params.trans_mag,
                        add_noise=False)
         ]
 
@@ -753,21 +788,24 @@ def fetch_transform(params):
         train_transforms = [
             SplitSourceRef(mode="hdf"),
             ShufflePoints(),
-            PRNetTorch(num_points=params.num_points, rot_mag=params.rot_mag, trans_mag=params.trans_mag, add_noise=True)
+            PRNetTorch(num_points=params.num_points, angle_range=params.angle_range,
+                       rot_mag=params.rot_mag, trans_mag=params.trans_mag, add_noise=True)
         ]
 
         test_transforms = [
             SetDeterministic(),
             SplitSourceRef(mode="hdf"),
             ShufflePoints(),
-            PRNetTorch(num_points=params.num_points, rot_mag=params.rot_mag, trans_mag=params.trans_mag, add_noise=True)
+            PRNetTorch(num_points=params.num_points, angle_range=params.angle_range,
+                       rot_mag=params.rot_mag, trans_mag=params.trans_mag, add_noise=True)
         ]
 
     elif params.transform_type == "modelnet_os_prnet_clean":
         train_transforms = [
             SplitSourceRef(mode="hdf"),
             ShufflePoints(),
-            PRNetTorch(num_points=params.num_points, rot_mag=params.rot_mag, trans_mag=params.trans_mag,
+            PRNetTorch(num_points=params.num_points, angle_range=params.angle_range,
+                       rot_mag=params.rot_mag, trans_mag=params.trans_mag,
                        add_noise=False)
         ]
 
@@ -775,7 +813,8 @@ def fetch_transform(params):
             # SetDeterministic(),
             SplitSourceRef(mode="hdf"),
             ShufflePoints(),
-            PRNetTorch(num_points=params.num_points, rot_mag=params.rot_mag, trans_mag=params.trans_mag,
+            PRNetTorch(num_points=params.num_points, angle_range=params.angle_range,
+                       rot_mag=params.rot_mag, trans_mag=params.trans_mag,
                        add_noise=False)
         ]
 
@@ -784,6 +823,8 @@ def fetch_transform(params):
             SplitSourceRef(mode="hdf"),
             ShufflePoints(),
             PRNetTorch(num_points=params.num_points,
+                       angle_range=params.angle_range,
+
                        rot_mag=params.rot_mag,
                        trans_mag=params.trans_mag,
                        add_noise=False,
@@ -796,6 +837,8 @@ def fetch_transform(params):
             SplitSourceRef(mode="hdf"),
             ShufflePoints(),
             PRNetTorch(num_points=params.num_points,
+                       angle_range=params.angle_range,
+
                        rot_mag=params.rot_mag,
                        trans_mag=params.trans_mag,
                        add_noise=False,
@@ -808,6 +851,8 @@ def fetch_transform(params):
             SplitSourceRef(mode="donothing"),
             ShufflePoints(),
             PRNetTorch(num_points=params.num_points,
+                       angle_range=params.angle_range,
+
                        rot_mag=params.rot_mag,
                        trans_mag=params.trans_mag,
                        add_noise=False,
@@ -820,6 +865,8 @@ def fetch_transform(params):
             SplitSourceRef(mode="donothing"),
             ShufflePoints(),
             PRNetTorch(num_points=params.num_points,
+                       angle_range=params.angle_range,
+
                        rot_mag=params.rot_mag,
                        trans_mag=params.trans_mag,
                        add_noise=False,
