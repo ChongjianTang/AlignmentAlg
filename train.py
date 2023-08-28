@@ -166,6 +166,8 @@ def train_and_evaluate(model, manager: Manager):
     # reload weights from restore_file if specified
     if args.restore_file is not None:
         manager.load_checkpoints()
+        # manager.best_test_score = 1
+        # manager.best_val_score = 1
         manager.optimizer.param_groups[0]['lr'] = 0.00001
         # manager.scheduler.gamma = params.gamma
         # manager.epoch = 0

@@ -85,93 +85,93 @@ def test(model, manager):
 
     with torch.no_grad():
         # compute metrics over the dataset
-        if manager.dataloaders["val"] is not None:
-
-            # inference time
-            total_time = 0.
-            all_endpoints = defaultdict(list)
-            # loss status and val status initial
-            manager.reset_loss_status()
-            manager.reset_metric_status("val")
-
-            # Visualization
-            pcd = o3d.io.read_point_cloud("dataset/lander.ply")
-            points_src = np.asarray(pcd.points).astype(np.float32)
-            points_src = points_src - np.mean(points_src, axis=0)
-
-            pcd = o3d.io.read_point_cloud("dataset/seg_target_object1.ply")
-            points_ref = np.asarray(pcd.points)
-            points_ref = points_ref - np.mean(points_ref, axis=0)
-
-            theta = np.radians(78)
-
-            R = np.array([
-                [np.cos(theta), -np.sin(theta), 0],
-                [np.sin(theta), np.cos(theta), 0],
-                [0, 0, 1]
-            ])
-
-            points_ref = np.dot(points_ref, R.T).astype(np.float32)
-
-            # find the global max and min values
-            max_value_global = np.max([np.abs(points_src.min()), np.abs(points_src.max()),
-                                       np.abs(points_ref.min()), np.abs(points_ref.max())])
-
-            # Scale the points using the global maximum value
-            points_src = points_src / max_value_global
-            points_ref = points_ref / max_value_global
-
-            # Ensure that the points are within the range of -1 and 1
-            points_src = 2 * (points_src - points_src.min()) / (points_src.max() - points_src.min()) - 1
-            points_ref = 2 * (points_ref - points_ref.min()) / (points_ref.max() - points_ref.min()) - 1
-
-            N = points_ref.shape[0]
-            indices = np.random.choice(N, size=points_src.shape[0], replace=False)
-
-            points_ref = points_ref[indices, :]
-
-            # plot_3d_points(points_ref, points_src, "Input")
-
-            print("hi")
-            start_time = time.time()
-            points_src, points_ref, src_pred_mask, ref_pred_mask, _ = model.module.my_eval(points_src, points_ref)
-            print(time.time() - start_time)
-            print("hi")
-
-
-            # plot_3d_points(points_ref, points_src, "Output")
-
-            # for data in manager.dataloaders["train"]:
-            #     for i in range(5):
-            #         points_src = data["points_src"].cpu().numpy()[i]
-            #         points_ref = data["points_ref"].cpu().numpy()[i]
-            #         plot_3d_points(points_ref, points_src)
-            #
-            #         points_src, points_ref, src_pred_mask, ref_pred_mask, _ = model.module.my_eval(points_src,
-            #                                                                                        points_ref)
-            #
-            #         plot_3d_points(points_ref, points_src)
-
-            for batch_idx, data_batch in enumerate(manager.dataloaders["val"]):
-                # move to GPU if available
-                data_batch = utils.tensor_gpu(data_batch)
-                # compute model output
-                output_batch = model(data_batch)
-
-                # real batch size
-                batch_size = data_batch["points_src"].size()[0]
-                # compute all loss on this batch
-                loss = compute_loss(output_batch, manager.params)
-
-                manager.update_loss_status(loss, batch_size)
-                # compute all metrics on this batch
-                metrics = compute_metrics(output_batch, manager.params)
-                manager.update_metric_status(metrics, "val", batch_size)
-
-            # compute RMSE metrics
-            manager.summarize_metric_status(metrics, "val")
-            # For each epoch, update and print the metric
-            manager.print_metrics("val", title="Val", color="green")
+        # if manager.dataloaders["val"] is not None:
+        #
+        #     # inference time
+        #     total_time = 0.
+        #     all_endpoints = defaultdict(list)
+        #     # loss status and val status initial
+        #     manager.reset_loss_status()
+        #     manager.reset_metric_status("val")
+        #
+        #     # Visualization
+        #     pcd = o3d.io.read_point_cloud("dataset/lander.ply")
+        #     points_src = np.asarray(pcd.points).astype(np.float32)
+        #     points_src = points_src - np.mean(points_src, axis=0)
+        #
+        #     pcd = o3d.io.read_point_cloud("dataset/seg_target_object1.ply")
+        #     points_ref = np.asarray(pcd.points)
+        #     points_ref = points_ref - np.mean(points_ref, axis=0)
+        #
+        #     theta = np.radians(78)
+        #
+        #     R = np.array([
+        #         [np.cos(theta), -np.sin(theta), 0],
+        #         [np.sin(theta), np.cos(theta), 0],
+        #         [0, 0, 1]
+        #     ])
+        #
+        #     points_ref = np.dot(points_ref, R.T).astype(np.float32)
+        #
+        #     # find the global max and min values
+        #     max_value_global = np.max([np.abs(points_src.min()), np.abs(points_src.max()),
+        #                                np.abs(points_ref.min()), np.abs(points_ref.max())])
+        #
+        #     # Scale the points using the global maximum value
+        #     points_src = points_src / max_value_global
+        #     points_ref = points_ref / max_value_global
+        #
+        #     # Ensure that the points are within the range of -1 and 1
+        #     points_src = 2 * (points_src - points_src.min()) / (points_src.max() - points_src.min()) - 1
+        #     points_ref = 2 * (points_ref - points_ref.min()) / (points_ref.max() - points_ref.min()) - 1
+        #
+        #     N = points_ref.shape[0]
+        #     indices = np.random.choice(N, size=points_src.shape[0], replace=False)
+        #
+        #     points_ref = points_ref[indices, :]
+        #
+        #     plot_3d_points(points_ref, points_src, "Input")
+        #
+        #     print("hi")
+        #     start_time = time.time()
+        #     points_src, points_ref, src_pred_mask, ref_pred_mask, _ = model.module.my_eval(points_src, points_ref)
+        #     print(time.time() - start_time)
+        #     print("hi")
+        #
+        #
+        #     plot_3d_points(points_ref, points_src, "Output")
+        #
+        #     # for data in manager.dataloaders["train"]:
+        #     #     for i in range(5):
+        #     #         points_src = data["points_src"].cpu().numpy()[i]
+        #     #         points_ref = data["points_ref"].cpu().numpy()[i]
+        #     #         plot_3d_points(points_ref, points_src)
+        #     #
+        #     #         points_src, points_ref, src_pred_mask, ref_pred_mask, _ = model.module.my_eval(points_src,
+        #     #                                                                                        points_ref)
+        #     #
+        #     #         plot_3d_points(points_ref, points_src)
+        #
+        #     for batch_idx, data_batch in enumerate(manager.dataloaders["val"]):
+        #         # move to GPU if available
+        #         data_batch = utils.tensor_gpu(data_batch)
+        #         # compute model output
+        #         output_batch = model(data_batch)
+        #
+        #         # real batch size
+        #         batch_size = data_batch["points_src"].size()[0]
+        #         # compute all loss on this batch
+        #         loss = compute_loss(output_batch, manager.params)
+        #
+        #         manager.update_loss_status(loss, batch_size)
+        #         # compute all metrics on this batch
+        #         metrics = compute_metrics(output_batch, manager.params)
+        #         manager.update_metric_status(metrics, "val", batch_size)
+        #
+        #     # compute RMSE metrics
+        #     manager.summarize_metric_status(metrics, "val")
+        #     # For each epoch, update and print the metric
+        #     manager.print_metrics("val", title="Val", color="green")
 
         if manager.dataloaders["test"] is not None:
             # inference time
@@ -184,6 +184,9 @@ def test(model, manager):
             for batch_idx, data_batch in enumerate(manager.dataloaders["test"]):
                 # move to GPU if available
                 data_batch = utils.tensor_gpu(data_batch)
+                print(data_batch['label'].cpu().numpy()[0])
+                # if data_batch['label'].cpu().numpy()[0] != 40:
+                #     continue
                 # compute model output
                 start_time = time.time()
                 output_batch = model(data_batch)

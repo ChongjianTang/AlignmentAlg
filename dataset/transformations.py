@@ -448,8 +448,59 @@ class PRNetTorch:
         src = sample["points_src"]
         ref = sample["points_ref"]
 
+        anglex = np.random.uniform(0, 2 * np.pi)
+        angley = np.random.uniform(-np.pi / 2, np.pi / 2)
+        anglez = np.random.uniform(0, 2 * np.pi)
+
+        cosx = np.cos(anglex)
+        cosy = np.cos(angley)
+        cosz = np.cos(anglez)
+        sinx = np.sin(anglex)
+        siny = np.sin(angley)
+        sinz = np.sin(anglez)
+        Rx = np.array([[1, 0, 0], [0, cosx, -sinx], [0, sinx, cosx]])
+        Ry = np.array([[cosy, 0, siny], [0, 1, 0], [-siny, 0, cosy]])
+        Rz = np.array([[cosz, -sinz, 0], [sinz, cosz, 0], [0, 0, 1]])
+
+        R_ab = Rx @ Ry @ Rz
+
+        src = np.dot(src, R_ab.T)
+        ref = np.dot(ref, R_ab.T)
+
         # Crop and sample
-        if self.partial:
+
+        results = ['partial', 'overlap', 'whole']
+
+        result = np.random.choice(results, p=[0.5, 0.2, 0.3])
+
+        if result == 'partial':
+            radius = 500
+            azimuthal_angle = 2 * np.pi * np.random.rand()
+            polar_angle = np.arccos(2 * np.random.rand() - 1)
+
+            x = radius * np.sin(polar_angle) * np.cos(azimuthal_angle)
+            y = radius * np.sin(polar_angle) * np.sin(azimuthal_angle)
+            z = radius * np.cos(polar_angle)
+
+            random_point = np.array([x, y, z])
+
+            distances = np.linalg.norm(src - random_point, axis=1)
+
+            ratio = np.random.uniform(0.8, 1)
+
+            num_to_select = int(ratio * len(src))
+            idx1 = np.argsort(distances)[:num_to_select]
+            if np.random.rand() > 0.5:
+                idx2 = np.random.choice(idx1, 768, replace=False)
+                idx1 = np.random.choice(src.shape[0], 768, replace=False)
+            else:
+                idx1 = np.random.choice(idx1, 768, replace=False)
+                idx2 = np.random.choice(src.shape[0], 768, replace=False)
+
+            src = torch.from_numpy(src)
+            ref = torch.from_numpy(ref)
+
+        elif result == 'overlap':
             src = torch.from_numpy(src)
             ref = torch.from_numpy(ref)
 
@@ -458,7 +509,7 @@ class PRNetTorch:
 
             # Randomly select an azimuthal angle and a polar angle
             theta1 = 2 * np.pi * np.random.rand()
-            phi1 = np.pi * np.random.rand()
+            phi1 = np.arccos(2 * np.random.rand() - 1)
 
             # Calculate the Cartesian coordinates
             x = r * np.sin(phi1) * np.cos(theta1)
@@ -486,8 +537,10 @@ class PRNetTorch:
             random_p2 = np.array([x2, y2, z2])
             idx2 = self.knn(ref, random_p2, k=768)
         else:
-            idx1 = np.random.choice(src.shape[0], 1024, replace=False),
-            idx2 = np.random.choice(ref.shape[0], 1024, replace=False),
+            src = torch.from_numpy(src)
+            ref = torch.from_numpy(ref)
+            idx1 = torch.randint(0, src.shape[0], (768,))
+            idx2 = torch.randint(0, ref.shape[0], (768,))
             # src = np.squeeze(src, axis=-1)
             # ref = np.squeeze(ref, axis=-1)
         src = src[idx1, :]
